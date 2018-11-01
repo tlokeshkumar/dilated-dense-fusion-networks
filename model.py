@@ -73,6 +73,22 @@ def build_model(input_tensor=None, input_shape=None, num_boost=8,ch='ddfn'):
 
     m = Model(inputs = img_input, outputs = x)
     return m
+
+def loss_funcs(model, labels):
+    out = model.output
+    mse = tf.losses.mean_squared_error(out, labels)
+
+    with tf.name_scope('loss'):
+        tf.summary.scalar('Mean', tf.reduce_mean(mse))
+        tf.summary.scalar('Max', tf.reduce_max(mse))
+        tf.summary.scalar('Min', tf.reduce_min(mse))
+    
+    with tf.name_scope('Predictions'):
+        tf.summary.scalar('Mean', tf.reduce_mean(out))
+        tf.summary.scalar('Max', tf.reduce_max(out))
+        tf.summary.scalar('Min', tf.reduce_min(out))
+    return mse
+
 if __name__ == '__main__':
     m = build_model(input_shape=[256,256,3])
     print(m.summary())
