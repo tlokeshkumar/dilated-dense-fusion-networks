@@ -7,12 +7,11 @@ import argparse
 import tensorflow as tf
 import numpy as np
 from tensorflow.python.keras import backend as K_B
-from input_data import input_data
-from csrnet import create_full_model,loss_funcs
 from os.path import exists
 import coloredlogs
 from glob import glob
 from natsort import natsorted 
+import tensorflow 
 
 parser = argparse.ArgumentParser(description="Inputs to the code")
 
@@ -24,7 +23,7 @@ parser.add_argument("--load_ckpt",type = str,default='./checkpoints',help="path 
 parser.add_argument("--save_freq",type = int,default=100,help="save frequency")
 parser.add_argument("--display_step",type = int,default=1,help="display frequency")
 parser.add_argument("--summary_freq",type = int,default=100,help="summary writer frequency")
-parser.add_argument("--no_epochs",type=int,default=10,help="number of epochs for training")
+parser.add_argument("--no_iter",type=int,default=10,help="number of epochs for training")
 parser.add_argument("--lr", type=float, default=1e-4, help="Learning Rate")
 
 def get_input_lists(path):
@@ -48,14 +47,17 @@ if __name__ == '__main__':
         init = tf.global_variables_initializer()
 
         gt, ns = get_input_lists(args.dataset)
-        next_element, init_op = segmentation_data(ns, gt, augment=True, shuffle_data=True, batch_size=args.batch_size)
-
-        x = tf.placeholder(tf.float32, shape=[img_rows, img_cols, 3])        
         
+        next_element, init_op = segmentation_data(ns, gt,img_rows, img_cols, augment=True, shuffle_data=True, batch_size=args.batch_size)
+
+        x = tensorflow.keras.Input(shape=(img_rows, img_cols, 3))
+        # x = tf.placeholder(tf.float32, shape=[None, img_rows, img_cols, 3])        
+        noise, ground_truth = next_element # Splitting the next element 
         m = build_model(x)
+        # m = build_model(x)
+        # m.input = noise
 
         # print (m.summary())
-        noise, ground_truth = next_element # Splitting the next element 
         
         loss = loss_funcs(m, ground_truth)
 
@@ -66,7 +68,7 @@ if __name__ == '__main__':
         global_step_tensor = tf.train.get_or_create_global_step()
 
         optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
-
+        train_step = optimizer.minimize(loss)
         with K_B.get_session() as sess:
 
             sess.run(init)
@@ -91,22 +93,31 @@ if __name__ == '__main__':
             else:
                 tf.logging.info("Training from Scratch")
 
-            tf.logging.info('Training with Batch Size %d for %d epochs'%(args.batch_size,args.no_epochs))
+            tf.logging.info('Training with Batch Size %d for %d epochs'%(args.batch_size,args.no_iter))
 
-        while True:    
-            # Training Iterations Begin
-            global_step,_ = sess.run([global_step_tensor,opB],options = runopts)
-            if global_step%(args.display_step)==0:
-                loss_val = sess.run([loss_B],options = runopts)
-                tf.logging.info('Iteration: ' + str(global_step) + ' Loss: ' +str(loss_val))
-            
-            if global_step%(args.summary_freq)==0:
-                tf.logging.info('Summary Written')
-                summary_str = sess.run(summary)
-                summary_writer.add_summary(summary_str, global_step)
-            
-            if global_step%(args.save_freq)==0:
-                saver.save(sess,args.ckpt_savedir,global_step=tf.train.get_global_step())
+            while True:    
+                # Training Iterations begin
+                noise_values = sess.run(noise)
+                print (noise_values.shape)
+                print (noise_values.dtype)
+                output_ = sess.run(m.output, feed_dict={x:noise_values})
+                np.save("output.npy", output_)
+                np.save("noise.npy", noise_values)
+                exit(0)
+                global_step,_ = sess.run([global_step_tensor,train_step],options = runopts, feed_dict={x:noise_values})
+                # global_step,_ = sess.run([global_step_tensor,train_step],options = runopts)
+                
+                if global_step%(args.display_step)==0:
+                    loss_val = sess.run([loss],options = runopts)
+                    tf.logging.info('Iteration: ' + str(global_step) + ' Loss: ' +str(loss_val))
+                
+                if global_step%(args.summary_freq)==0:
+                    tf.logging.info('Summary Written')
+                    summary_str = sess.run(summary)
+                    summary_writer.add_summary(summary_str, global_step)
+                
+                if global_step%(args.save_freq)==0:
+                    saver.save(sess,args.ckpt_savedir,global_step=tf.train.get_global_step())
 
-            if np.floor(global_step/no_iter_per_epoch) == args.no_epochs:
-                break
+                if global_step > args.no_iter:
+                    break

@@ -105,10 +105,10 @@ def _normalize_data(image, mask):
     return image, mask
 
 
-def _resize_data(image, mask):
+def _resize_data(image, mask, target_shape):
     """Resizes images to smaller dimensions."""
-    image = tf.image.resize_images(image, [480, 640])
-    mask = tf.image.resize_images(mask, [480, 640])
+    image = tf.image.resize_images(image, target_shape)
+    mask = tf.image.resize_images(mask,   target_shape)
 
     return image, mask
 
@@ -140,7 +140,7 @@ def _resize_data_classification(image, label, target_size):
 
     return image, label
 
-def segmentation_data(image_paths, mask_paths, augment=False, shuffle_data = True, 
+def segmentation_data(image_paths, mask_paths,img_rows, img_cols, augment=False, shuffle_data = True, 
                     seed=None,  num_parallel_calls=2, prefetch=64, batch_size=32):
     """Reads data, normalizes it, shuffles it, then batches it, returns a
        the next element in dataset op and the dataset initializer op.
@@ -183,7 +183,7 @@ def segmentation_data(image_paths, mask_paths, augment=False, shuffle_data = Tru
                         num_parallel_calls=num_parallel_calls).prefetch(prefetch)
 
         data = data.map(
-            _crop_random_segmentation, num_parallel_calls=num_parallel_calls).prefetch(prefetch)
+            lambda x, y:_crop_random_segmentation(x, y, (img_rows, img_cols)), num_parallel_calls=num_parallel_calls).prefetch(prefetch)
 
         data = data.map(_flip_left_right_segmentation,
                         num_parallel_calls=num_parallel_calls).prefetch(prefetch)
@@ -192,7 +192,7 @@ def segmentation_data(image_paths, mask_paths, augment=False, shuffle_data = Tru
     data = data.batch(batch_size)
 
     # Resize to smaller dims for speed
-    data = data.map(_resize_data, num_parallel_calls=num_parallel_calls).prefetch(prefetch)
+    # data = data.map(_resize_data, num_parallel_calls=num_parallel_calls).prefetch(prefetch)
 
     # Normalize
     # data = data.map(_normalize_data,
@@ -211,6 +211,7 @@ def segmentation_data(image_paths, mask_paths, augment=False, shuffle_data = Tru
     init_op = iterator.make_initializer(data)
 
     return next_element, init_op
+
 
 def flow_from_directory(directory, target_size=(256, 256), batch_size=32, shuffle_data=True, 
                 seed=None,  num_parallel_calls=2, 
