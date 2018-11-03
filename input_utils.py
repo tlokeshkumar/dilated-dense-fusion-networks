@@ -4,7 +4,7 @@ from random import shuffle
 from glob import glob
 import os
 import numpy as np
-
+import matplotlib.pyplot as plt
 # import cv2
 
 
@@ -364,8 +364,20 @@ def read_no_labels(directory, s = 2, batch_size=1, shuffle_data=True,
 
 
 if __name__ == '__main__':
-    dire = '/home/tlokeshkumar/Downloads/GTOS_256/h_sample002_01'
-    n, ini = read_no_labels(dire)
+    from natsort import natsorted
+    
+    dire = '/home/tlokeshkumar/Downloads/SIDD_Small/Data'
+    
+    def get_input_lists(path):
+        '''
+        Returns the list of paths of images and datasets
+        '''
+        gt = natsorted(glob(path+"/**/GT_*.PNG"))
+        ns = natsorted(glob(path+'/**/NOISY_*.PNG'))
+        return gt, ns
+
+    gt, ns = get_input_lists(dire)
+    n, ini = segmentation_data(ns, gt, 256, 256, augment=True)
 
     print ("passed the functions successfully!")
 
@@ -377,10 +389,10 @@ if __name__ == '__main__':
 
     for i in range(5):
         a, b = sess.run(n)
-        print (b)
+        print (b.shape)
         print (a.shape)
-        print (np.squeeze(b, axis=0).shape)
-        cv2.imshow("image", np.squeeze(a, axis=0))
-        cv2.imshow("downsampled", np.squeeze(b.astype('uint8'), axis=0))
-        cv2.waitKey()
-        cv2.destroyAllWindows()
+        plt.imshow(a[0])
+        plt.show()
+        plt.imshow(b[0])
+        plt.show()
+        
