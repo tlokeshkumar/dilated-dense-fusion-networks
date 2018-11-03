@@ -50,19 +50,19 @@ if __name__ == '__main__':
         
         next_element, init_op = segmentation_data(ns, gt,img_rows, img_cols, augment=True, shuffle_data=True, batch_size=args.batch_size)
 
-        x = tensorflow.keras.Input(shape=(img_rows, img_cols, 3))
+#         x = tensorflow.keras.Input(shape=(img_rows, img_cols, 3))
         # Sample input tensor for tensorboard
         # y = tf.placeholder(tf.float32, shape=(None, img_rows, img_cols, 3))
 
         # x = tf.placeholder(tf.float32, shape=[None, img_rows, img_cols, 3])        
         noise, ground_truth = next_element # Splitting the next element 
-        m = build_model(x)
+        m,out = build_model(noise)
         # m = build_model(x)
         # m.input = noise
 
         # print (m.summary())
         
-        loss = loss_funcs(m, ground_truth)
+        loss = loss_funcs(m,out, ground_truth)
         global_step_tensor = tf.train.get_or_create_global_step()
         
         starting_learning_rate = args.lr
@@ -110,16 +110,14 @@ if __name__ == '__main__':
 
             while True:    
                 # Training Iterations begin
-                noise_values = sess.run(noise)
-                ground_truth_vales = sess.run(ground_truth)
+#                 noise_values = sess.run(noise)
+#                 ground_truth_vales = sess.run(ground_truth)
 
                 #print (noise_values.shape)
                 #print (noise_values.dtype)
                 #output_ = sess.run(m.output, feed_dict={x:noise_values})
-                np.save("output.npy", ground_truth_vales)
-                np.save("noise.npy", noise_values)
-                exit(0)
-                global_step,_ = sess.run([global_step_tensor,train_step],options = runopts, feed_dict={x:noise_values})
+#                 exit(0)
+                global_step,_ = sess.run([global_step_tensor,train_step],options = runopts)
                 # global_step,_ = sess.run([global_step_tensor,train_step],options = runopts)
                 
                 if global_step%(args.display_step)==0:
