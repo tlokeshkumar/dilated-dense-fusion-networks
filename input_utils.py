@@ -5,7 +5,7 @@ from glob import glob
 import os
 import numpy as np
 
-import cv2
+# import cv2
 
 
 def _corrupt_brightness(image, mask):
@@ -38,25 +38,31 @@ def _corrupt_saturation(image, mask):
 def _crop_random_segmentation(image, mask, target_size):
     """Randomly crops image and mask in accord."""
     img_rows, img_cols = target_size
+    
     seed = random.random()
+    
     cond_crop_image = tf.cast(tf.random_uniform(
         [], maxval=2, dtype=tf.int32, seed=seed), tf.bool)
     cond_crop_mask = tf.cast(tf.random_uniform(
         [], maxval=2, dtype=tf.int32, seed=seed), tf.bool)
 
+    # Ensure that the random crop always occurs irrespective of random tosses in the prevoiious line
     image = tf.cond(cond_crop_image, lambda: tf.random_crop(
-        image, [int(img_rows * 0.85), int(img_cols * 0.85), 3], seed=seed), lambda: tf.identity(image))
+        image, [int(img_rows ), int(img_cols ), 3], seed=seed), lambda: tf.random_crop(
+        image, [int(img_rows ), int(img_cols ), 3], seed=seed))
+    
     mask = tf.cond(cond_crop_mask, lambda: tf.random_crop(
-        mask, [int(img_rows * 0.85), int(img_cols * 0.85), 1], seed=seed), lambda: tf.identity(mask))
+        mask, [int(img_rows ), int(img_cols ), 3], seed=seed), lambda: tf.random_crop(
+        mask, [int(img_rows ), int(img_cols ), 3], seed=seed))
+    
     image = tf.expand_dims(image, axis=0)
     mask = tf.expand_dims(mask, axis=0)
 
-    image = tf.image.resize_images(image, [img_rows, img_cols])
-    mask = tf.image.resize_images(mask,   [img_rows, img_cols])
+    # image = tf.image.resize_images(image, [img_rows, img_cols])
+    # mask = tf.image.resize_images(mask,   [img_rows, img_cols])
 
     image = tf.squeeze(image, axis=0)
     mask = tf.squeeze(mask, axis=0)
-
     return image, mask
 
 def _crop_random_classification(image, label, target_size):
@@ -119,8 +125,7 @@ def _parse_data_segmentation(image_paths, mask_paths):
     label_content = tf.read_file(mask_paths)
 
     images = tf.image.decode_jpeg(image_content, channels=3)
-    mask = tf.image.decode_jpeg(label_content, channels=1)
-
+    mask = tf.image.decode_jpeg(label_content, channels=3)
     return images, mask
 
 def _parse_data_classification(image_paths, labels, target_size, class_len):
@@ -141,7 +146,7 @@ def _resize_data_classification(image, label, target_size):
     return image, label
 
 def segmentation_data(image_paths, mask_paths,img_rows, img_cols, augment=False, shuffle_data = True, 
-                    seed=None,  num_parallel_calls=2, prefetch=64, batch_size=32):
+                    seed=None,  num_parallel_calls=2, prefetch=2, batch_size=32):
     """Reads data, normalizes it, shuffles it, then batches it, returns a
        the next element in dataset op and the dataset initializer op.
        Inputs:
@@ -198,12 +203,11 @@ def segmentation_data(image_paths, mask_paths,img_rows, img_cols, augment=False,
     # data = data.map(_normalize_data,
     #                 num_parallel_calls=num_threads).prefetch(30)
 
-    data = data.shuffle(prefetch)
+    data = data.shuffle(prefetch).repeat()
 
     # Create iterator
     iterator = tf.data.Iterator.from_structure(
         data.output_types, data.output_shapes)
-
     # Next element Op
     next_element = iterator.get_next()
 
