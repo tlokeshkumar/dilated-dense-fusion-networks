@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
         # print (m.summary())
         
-        loss = loss_funcs(m,out, ground_truth)
+        loss = loss_funcs(m,out, noise, ground_truth)
         global_step_tensor = tf.train.get_or_create_global_step()
         
         starting_learning_rate = args.lr
