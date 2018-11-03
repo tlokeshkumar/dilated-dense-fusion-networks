@@ -74,7 +74,7 @@ def build_model(input_tensor=None, input_shape=None, num_boost=8,l2_coeff=0.001,
     m = Model(inputs = img_input, outputs = x)
     return m,m.output
 
-def loss_funcs(model,out, labels)
+def loss_funcs(model,out,in,labels)
     # tf.summary.image('Pred', out)
 
     mse = tf.losses.mean_squared_error(model,out, labels)
@@ -82,8 +82,8 @@ def loss_funcs(model,out, labels)
     # mse += l2_loss
     total_loss = mse + tf.add_n(model.losses)
     with tf.name_scope('Images'):
-        tf.summary.image('Pred', model.output)
-        tf.summary.image('Noise', model.input)
+        tf.summary.image('Pred', out)
+        tf.summary.image('Noise', inp)
         tf.summary.image('ground_truth', labels)
     with tf.name_scope('loss'):
         tf.summary.scalar('Total_Loss', tf.reduce_mean(total_loss))
