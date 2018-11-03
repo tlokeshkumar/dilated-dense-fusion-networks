@@ -72,14 +72,12 @@ def build_model(input_tensor=None, input_shape=None, num_boost=8,l2_coeff=0.001,
     x = reconstruction(x, l2_coeff=l2_coeff)
 
     m = Model(inputs = img_input, outputs = x)
-    return m
+    return m,m.output
 
-def loss_funcs(model, labels):
-    out = model.output
+def loss_funcs(model,out, labels)
     # tf.summary.image('Pred', out)
 
-    mse = tf.losses.mean_squared_error(out, labels)
-    
+    mse = tf.losses.mean_squared_error(model,out, labels)
     # l2_loss = tf.losses.get_regularization_loss()
     # mse += l2_loss
     total_loss = mse + tf.add_n(model.losses)
